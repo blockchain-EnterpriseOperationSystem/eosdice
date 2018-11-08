@@ -1,0 +1,3 @@
+"D:\MYTOOLS\cmake-3.7.2-win64-x64 (1)\cmake-3.7.2-win64-x64\bin\cmake.exe" -E remove -f CMakeFiles\eosdice.dir/objects.a
+D:\MYTOOLS\GCC\bin\ar.exe cr CMakeFiles\eosdice.dir/objects.a @CMakeFiles\eosdice.dir\objects1.rsp
+D:\MYTOOLS\GCC\bin\g++.exe  -g   -Wl,--whole-archive CMakeFiles\eosdice.dir/objects.a -Wl,--no-whole-archive  -o eosdice.exe -Wl,--out-implib,libeosdice.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\eosdice.dir\linklibs.rsp

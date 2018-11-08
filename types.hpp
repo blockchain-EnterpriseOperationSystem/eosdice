@@ -1,41 +1,43 @@
 #include "utils.hpp"
 
-#define EOS_SYMBOL S(4, EOS)
-#define DICE_SYMBOL S(4, BOCAI)
-#define LOG N(eosbocailogs)
-#define DICETOKEN N(eosbocai1111)
-#define DEV N(eosbocaidevv)
-#define PRIZEPOOL N(eosbocai1111)
+#define EOS_SYMBOL symbol(symbol_code("EOS"), 4)
+#define DICE_SYMBOL symbol(symbol_code("BOCAI"), 4)
+#define LOG name("eosbocailogs")
+//token
+#define DICETOKEN name("eosbocai1111")
+#define DEV name("eosbocaidevv")
+#define PRIZEPOOL name("eosbocai1111")
 #define DICESUPPLY 88000000000000
 
 typedef uint32_t eostime;
 
-// @abi table bets i64
-struct st_bet
+
+
+TABLE st_bet
 {
     uint64_t id;
-    account_name player;
-    account_name referrer;
+    name player;
+    name referrer;
     asset amount;
     uint8_t roll_under;
     uint64_t created_at;
     uint64_t primary_key() const { return id; }
 };
 
-// @abi table users i64
-struct st_user
+
+TABLE st_user
 {
-    account_name owner;
+    name owner;
     asset amount;
     uint32_t count;
-    uint64_t primary_key() const { return owner; }
+    uint64_t primary_key() const { return (uint64_t) owner; }
 };
 
 struct st_result
 {
     uint64_t bet_id;
-    account_name player;
-    account_name referrer;
+    name player;
+    name referrer;
     asset amount;
     uint8_t roll_under;
     uint8_t random_roll;
@@ -57,7 +59,8 @@ struct st_global
     uint64_t initStatu;
 };
 
-typedef multi_index<N(users), st_user> tb_uesrs;
-typedef multi_index<N(bets), st_bet> tb_bets;
-typedef singleton<N(fundpool), st_fund_pool> tb_fund_pool;
-typedef singleton<N(global), st_global> tb_global;
+typedef multi_index<"users"_n, st_user> tb_uesrs;
+typedef multi_index<"bets"_n, st_bet> tb_bets;
+typedef singleton<"fundpool"_n, st_fund_pool> tb_fund_pool;
+typedef singleton<"global"_n, st_global> tb_global;
+

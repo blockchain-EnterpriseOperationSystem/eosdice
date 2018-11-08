@@ -3,7 +3,7 @@
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/time.hpp>
-#include <eosiolib/types.hpp>
+#include <eosiolib/types.h>
 #include <iostream>
 
 using namespace eosio;

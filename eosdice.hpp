@@ -1,27 +1,34 @@
+//基础算法
 #include <algorithm>
+//为了实现合约 官方设计的一套sdk库 stdint.h wchar.h account_name permission_name table_name time scope_name
+//action_name weight_type public_key gianature chechsum256 transation_id_type block_id_type account_permission
 #include <eosiolib/transaction.hpp>
+//合约名转换成name
 #include "eosio.token.hpp"
 #include "types.hpp"
-
-class eosbocai2222 : public contract
+//独立定义的类型
+//#include "types.hpp"
+using namespace eosio;
+CONTRACT eosdice : public eosio::contract
 {
   public:
-    eosbocai2222(account_name self)
-        : contract(self),
-          _bets(_self, _self),
-          _users(_self, _self),
-          _fund_pool(_self, _self),
-          _global(_self, _self){};
+    using contract::contract;
 
-    void transfer(const account_name &from, const account_name &to, const asset &quantity, const string &memo);
+    eosdice(name receiver,name code, datastream<const char *> ds)
+        : contract(receiver,code,ds),
+          _bets(_self, _self.value),
+          _users(_self, _self.value),
+          _fund_pool(_self, _self.value),
+          _global(_self, _self.value){};
 
-    // @abi action
-    void reveal(const st_bet &bet);
-    // @abi action
-    void reveal1(const st_bet &bet);
 
-    // @abi action
-    void init();
+    void transfer(const name &from, const name &to, const asset &quantity, const string &memo);
+
+ACTION  reveal(const st_bet &bet);
+
+//ACTION  reveal1(const st_bet &bet);
+
+ACTION  init();
 
   private:
     tb_bets _bets;
@@ -31,7 +38,7 @@ class eosbocai2222 : public contract
 
     void parse_memo(string memo,
                     uint8_t *roll_under,
-                    account_name *referrer)
+                    const char *referrer)
     {
         // remove space
         memo.erase(std::remove_if(memo.begin(),
@@ -141,9 +148,9 @@ class eosbocai2222 : public contract
 
     asset available_balance()
     {
-        auto token = eosio::token(N(eosio.token));
+        auto token = eosio::token(name(), name(), datastream<const char *>(nullptr, 0));
         const asset balance =
-            token.get_balance(_self, symbol_type(EOS_SYMBOL).name());
+            token.get_balance(_self, eosio::symbol(EOS_SYMBOL).name());
         const asset locked = get_fund_pool().locked;
         const asset available = balance - locked;
         eosio_assert(available.amount >= 0, "fund pool overdraw");
@@ -168,31 +175,31 @@ class eosbocai2222 : public contract
     uint64_t getDiceSupply()
     {
         auto eos_token = eosio::token(DICETOKEN);
-        auto supply = eos_token.get_supply(symbol_type(DICE_SYMBOL).name());
+        auto supply = eos_token.get_supply(symbol(DICE_SYMBOL).name());
         return supply.amount;
     }
-    uint8_t random(account_name name, uint64_t game_id)
+    uint8_t random(name name, uint64_t game_id)
     {
-        auto eos_token = eosio::token(N(eosio.token));
-        asset pool_eos = eos_token.get_balance(_self, symbol_type(S(4, EOS)).name());
-        asset ram_eos = eos_token.get_balance(N(eosio.ram), symbol_type(S(4, EOS)).name());
-        asset betdiceadmin_eos = eos_token.get_balance(N(betdiceadmin), symbol_type(S(4, EOS)).name());
-        asset newdexpocket_eos = eos_token.get_balance(N(newdexpocket), symbol_type(S(4, EOS)).name());
-        asset chintailease_eos = eos_token.get_balance(N(chintailease), symbol_type(S(4, EOS)).name());
-        asset eosbiggame44_eos = eos_token.get_balance(N(eosbiggame44), symbol_type(S(4, EOS)).name());
+        auto eos_token = eosio::token("eosio.token");
+        asset pool_eos = eos_token.get_balance(_self, symbol(symbol_code("EOS"),4).name());
+        asset ram_eos = eos_token.get_balance(N(eosio.ram), symbol(S(4, EOS)).name());
+        asset betdiceadmin_eos = eos_token.get_balance("betdiceadmin"_n, symbol(S(4, EOS)).name());
+        asset newdexpocket_eos = eos_token.get_balance("newdexpocket"_n, symbol(S(4, EOS)).name());
+        asset chintailease_eos = eos_token.get_balance("chintailease"_n, symbol(S(4, EOS)).name());
+        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(S(4, EOS)).name());
         asset total_eos = asset(0, EOS_SYMBOL);
 
         total_eos = pool_eos + ram_eos + betdiceadmin_eos + newdexpocket_eos + chintailease_eos + eosbiggame44_eos;
         auto mixd = tapos_block_prefix() * tapos_block_num() + name + game_id - current_time() + total_eos.amount;
         const char *mixedChar = reinterpret_cast<const char *>(&mixd);
 
-        checksum256 result;
+        capi_checksum256 result;
         sha256((char *)mixedChar, sizeof(mixedChar), &result);
 
         uint64_t random_num = *(uint64_t *)(&result.hash[0]) + *(uint64_t *)(&result.hash[8]) + *(uint64_t *)(&result.hash[16]) + *(uint64_t *)(&result.hash[24]);
         return (uint8_t)(random_num % 100 + 1);
     }
-    void issue_token(account_name to,
+    void issue_token(name to,
                      asset quantity,
                      string memo)
     {
@@ -207,13 +214,14 @@ class eosbocai2222 : public contract
         }
 
         asset sendAmout = asset(quantity.amount * global.eosperdice, DICE_SYMBOL);
-        action(permission_level{_self, N(active)},
+        action(permission_level{_self, "active"_n},
                DICETOKEN,
-               N(issue),
+               "issue"_n,
                make_tuple(to, sendAmout, memo))
             .send();
     }
-    void iplay(account_name from, asset quantity)
+
+    void iplay(name from, asset quantity)
     {
         auto itr = _users.find(from);
         if (itr == _users.end())
@@ -232,15 +240,15 @@ class eosbocai2222 : public contract
             });
         }
     }
-    void buytoken(account_name from, asset quantity)
+    void buytoken(name from, asset quantity)
     {
-        action(permission_level{_self, N(active)},
+        action(permission_level{_self, "active"_n)},
                DICETOKEN,
-               N(transfer),
+               "transfer"_n,
                std::make_tuple(_self, from, asset(quantity.amount * 10000, DICE_SYMBOL), std::string("thanks! eosdice.vip")))
             .send();
     }
-    void vipcheck(account_name from, asset quantity)
+    void vipcheck(name from, asset quantity)
     {
         auto itr = _users.find(from);
         uint64_t amount = itr->amount.amount / 1e4;
@@ -289,33 +297,13 @@ class eosbocai2222 : public contract
         {
             checkout = asset(quantity.amount * 15 / 1000, EOS_SYMBOL);
         }
-        action(permission_level{_self, N(active)},
-               N(eosio.token),
-               N(transfer),
-               std::make_tuple(_self, from, checkout, std::string("for vip")))
+        action(permission_level{_self, "active"_n},
+               "eosio.token"_n,
+               "transfer"_n,
+               std::make_tuple(get_self, from, checkout, std::string("reward for vip")))
             .send();
     }
 };
 
-extern "C"
-{
-    void apply(uint64_t receiver, uint64_t code, uint64_t action)
-    {
-        eosbocai2222 thiscontract(receiver);
 
-        if ((code == N(eosio.token)) && (action == N(transfer)))
-        {
-            execute_action(&thiscontract, &eosbocai2222::transfer);
-            return;
-        }
 
-        if (code != receiver)
-            return;
-
-        switch (action)
-        {
-            EOSIO_API(eosbocai2222, (reveal)(init)(reveal1))
-        };
-        eosio_exit(0);
-    }
-}

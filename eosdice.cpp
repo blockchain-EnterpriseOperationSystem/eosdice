@@ -1,6 +1,6 @@
-#include "eosbocai2222.hpp"
+#include "eosdice.hpp"
 
-void eosbocai2222::reveal(const st_bet &bet)
+void eosdice::reveal(const st_bet &bet)
 {
     require_auth(_self);
     uint8_t random_roll = random(bet.player, bet.id);
@@ -8,9 +8,10 @@ void eosbocai2222::reveal(const st_bet &bet)
     if (random_roll < bet.roll_under)
     {
         payout = compute_payout(bet.roll_under, bet.amount);
-        action(permission_level{_self, N(active)},
-               N(eosio.token),
-               N(transfer),
+
+        action(permission_level{_self, "active"_n},
+               "eosio.token"_n,
+               "transfer"_n,
                make_tuple(_self, bet.player, payout, winner_memo(bet)))
             .send();
     }
@@ -123,7 +124,7 @@ void eosbocai2222::transfer(const account_name &from,
                       _bet);
 }
 
-void eosbocai2222::init()
+void eosdice::init()
 {
     require_auth(_self);
     st_global global = _global.get_or_default(
@@ -136,4 +137,26 @@ void eosbocai2222::init()
     global.eosperdice = 100;
     global.initStatu = 1;
     _global.set(global, _self);
+}
+
+extern "C"
+{
+void apply(uint64_t receiver, uint64_t code, uint64_t action)
+{
+
+    if ((code == "eosio.token"_n.value) && (action == "transfer"_n.value))
+    {
+        execute_action(name(receiver), name(code),&eosdice::transfer);
+        return;
+    }
+
+    if (code != receiver)
+        return;
+
+    switch (action)
+    {
+        EOSIO_DISPATCH_HELPER(eosdice, (setcheck)(debug))
+    };
+    eosio_exit(0);
+}
 }
