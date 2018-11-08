@@ -2,11 +2,11 @@
 
 #define EOS_SYMBOL symbol(symbol_code("EOS"), 4)
 #define DICE_SYMBOL symbol(symbol_code("BOCAI"), 4)
-#define LOG name("eosbocailogs")
+#define LOG name("eosbocailogs"_n)
 //token
-#define DICETOKEN name("eosbocai1111")
-#define DEV name("eosbocaidevv")
-#define PRIZEPOOL name("eosbocai1111")
+#define DICETOKEN name("eosbocai1111"_n)
+#define DEV name("eosbocaidevv"_n)
+#define PRIZEPOOL name("eosbocai1111"_n)
 #define DICESUPPLY 88000000000000
 
 typedef uint32_t eostime;

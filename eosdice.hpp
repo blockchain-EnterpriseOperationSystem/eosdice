@@ -1,13 +1,8 @@
-//基础算法
 #include <algorithm>
-//为了实现合约 官方设计的一套sdk库 stdint.h wchar.h account_name permission_name table_name time scope_name
-//action_name weight_type public_key gianature chechsum256 transation_id_type block_id_type account_permission
 #include <eosiolib/transaction.hpp>
-//合约名转换成name
 #include "eosio.token.hpp"
 #include "types.hpp"
-//独立定义的类型
-//#include "types.hpp"
+#include <eosiolib/eosio.hpp>
 using namespace eosio;
 CONTRACT eosdice : public eosio::contract
 {
@@ -38,7 +33,7 @@ ACTION  init();
 
     void parse_memo(string memo,
                     uint8_t *roll_under,
-                    const char *referrer)
+                    char *referrer)
     {
         // remove space
         memo.erase(std::remove_if(memo.begin(),
@@ -59,11 +54,11 @@ ACTION  init();
         container = memo.substr(++pos);
         if (container.empty())
         {
-            *referrer = PRIZEPOOL;
+            *referrer = (char) PRIZEPOOL;
         }
         else
         {
-            *referrer = string_to_name(container.c_str());
+            *referrer = (char) container.c_str();
         }
     }
 
@@ -178,19 +173,21 @@ ACTION  init();
         auto supply = eos_token.get_supply(symbol(DICE_SYMBOL).name());
         return supply.amount;
     }
-    uint8_t random(name name, uint64_t game_id)
+    uint8_t random(const name name, uint64_t game_id)
     {
-        auto eos_token = eosio::token("eosio.token");
-        asset pool_eos = eos_token.get_balance(_self, symbol(symbol_code("EOS"),4).name());
-        asset ram_eos = eos_token.get_balance(N(eosio.ram), symbol(S(4, EOS)).name());
-        asset betdiceadmin_eos = eos_token.get_balance("betdiceadmin"_n, symbol(S(4, EOS)).name());
-        asset newdexpocket_eos = eos_token.get_balance("newdexpocket"_n, symbol(S(4, EOS)).name());
-        asset chintailease_eos = eos_token.get_balance("chintailease"_n, symbol(S(4, EOS)).name());
-        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(S(4, EOS)).name());
+        auto eos_token = eosio::token();
+        asset pool_eos =  eos_token.get_balance(_self, symbol(symbol_code("EOS"),4).name());
+        asset ram_eos = eos_token.get_balance(("eosio.ram"_n), symbol(symbol_code("EOS"),4).name());
+        asset betdiceadmin_eos = eos_token.get_balance("betdiceadmin"_n, symbol(symbol_code("EOS"),4).name());
+        asset newdexpocket_eos = eos_token.get_balance("newdexpocket"_n, symbol(symbol_code("EOS"),4).name());
+        asset chintailease_eos = eos_token.get_balance("chintailease"_n, symbol(symbol_code("EOS"),4).name());
+//        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(S(4, EOS)).name());
+        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(symbol_code("EOS"),4).name());
         asset total_eos = asset(0, EOS_SYMBOL);
 
         total_eos = pool_eos + ram_eos + betdiceadmin_eos + newdexpocket_eos + chintailease_eos + eosbiggame44_eos;
-        auto mixd = tapos_block_prefix() * tapos_block_num() + name + game_id - current_time() + total_eos.amount;
+//        auto mixd = tapos_block_prefix() * tapos_block_num() + name + game_id - current_time() + total_eos.amount;
+        auto mixd = tapos_block_prefix() * tapos_block_num()  +name.value+ game_id - current_time() + total_eos.amount;
         const char *mixedChar = reinterpret_cast<const char *>(&mixd);
 
         capi_checksum256 result;
@@ -303,6 +300,10 @@ ACTION  init();
                std::make_tuple(get_self, from, checkout, std::string("reward for vip")))
             .send();
     }
+
+
+
+
 };
 
 

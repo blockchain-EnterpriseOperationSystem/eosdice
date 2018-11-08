@@ -1,10 +1,11 @@
 #include "eosdice.hpp"
 
+
 void eosdice::reveal(const st_bet &bet)
 {
     require_auth(_self);
     uint8_t random_roll = random(bet.player, bet.id);
-    asset payout = asset(0, EOS_SYMBOL);
+    asset payout(0, EOS_SYMBOL);
     if (random_roll < bet.roll_under)
     {
         payout = compute_payout(bet.roll_under, bet.amount);
@@ -42,34 +43,35 @@ void eosdice::reveal(const st_bet &bet)
                      .random_roll = random_roll,
                      .payout = payout};
 
-    action(permission_level{_self, N(active)},
+    action(permission_level{_self, "active"_n},
            LOG,
-           N(result),
+           "result"_n,
            result)
         .send();
-    action(permission_level{_self, N(active)},
-           N(eosio.token),
-           N(transfer),
+
+    action(permission_level{_self, "active"_n},
+           "eosio.token"_n,
+           "transfer"_n,
            std::make_tuple(_self, DEV, compute_dev_reward(bet), std::string("for dev")))
         .send();
 
-    action(permission_level{_self, N(active)},
-           N(eosio.token),
-           N(transfer),
+    action(permission_level{_self, "active"_n},
+           "eosio.token"_n,
+           "transfer"_n,
            std::make_tuple(_self, PRIZEPOOL, compute_pool_reward(bet), std::string("for prize pool")))
         .send();
 }
-void eosbocai2222::reveal1(const st_bet &bet)
-{
-    require_auth(_self);
-    send_defer_action(permission_level{_self, N(active)},
-                      _self,
-                      N(reveal),
-                      bet);
-}
+//void eosdice::reveal1(const st_bet &bet)
+//{
+//    require_auth(_self);
+//    send_defer_action(permission_level{_self, "active"_n},
+//                      _self,
+//                      "reveal"_n,
+//                      bet);
+//}
 
-void eosbocai2222::transfer(const account_name &from,
-                            const account_name &to,
+void eosdice::transfer(const name &from,
+                            const name &to,
                             const asset &quantity,
                             const string &memo)
 {
@@ -82,8 +84,8 @@ void eosbocai2222::transfer(const account_name &from,
         return;
     }
     uint8_t roll_under;
-    account_name referrer;
-    parse_memo(memo, &roll_under, &referrer);
+    name referrer;
+    parse_memo(memo, &roll_under, reinterpret_cast<char *>(&referrer));
     eosio_assert(is_account(referrer), "referrer account does not exist");
 
     // //check quantity
@@ -110,17 +112,17 @@ void eosbocai2222::transfer(const account_name &from,
 
     lock(quantity);
 
-    action(permission_level{_self, N(active)},
-           N(eosio.token),
-           N(transfer),
+    action(permission_level{_self, "active"_n},
+           "eosio.token"_n,
+           "transfer"_n,
            make_tuple(_self,
                       _bet.referrer,
                       compute_referrer_reward(_bet),
                       referrer_memo(_bet)))
         .send();
-    send_defer_action(permission_level{_self, N(active)},
+    send_defer_action(permission_level{_self, "active"_n},
                       _self,
-                      N(reveal1),
+                      "reveal1"_n,
                       _bet);
 }
 
@@ -143,20 +145,20 @@ extern "C"
 {
 void apply(uint64_t receiver, uint64_t code, uint64_t action)
 {
+    if (code == receiver)
+    {
+        switch (action)
+        {
+            EOSIO_DISPATCH_HELPER(eosdice, (reveal)(init))
+        }
+    }
 
-    if ((code == "eosio.token"_n.value) && (action == "transfer"_n.value))
+     if ((code == "eosio.token"_n.value) && (action == "transfer"_n.value))
     {
         execute_action(name(receiver), name(code),&eosdice::transfer);
         return;
     }
 
-    if (code != receiver)
-        return;
-
-    switch (action)
-    {
-        EOSIO_DISPATCH_HELPER(eosdice, (setcheck)(debug))
-    };
     eosio_exit(0);
 }
-}
+};

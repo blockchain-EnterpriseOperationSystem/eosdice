@@ -85,7 +85,7 @@ asset token::get_supply(symbol sym) const
       return st.supply;
 }
 
-asset token::get_balance(name owner, symbol sym) const
+  asset token::get_balance(name owner, symbol sym) const
 {
       accounts accountstable(_self, owner.value);
       const auto &ac = accountstable.get(sym.raw());
