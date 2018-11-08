@@ -1,6 +1,6 @@
 #include "utils.hpp"
-
 #define EOS_SYMBOL symbol(symbol_code("EOS"), 4)
+//#define EOS_SYMBOL symbol_code("EOS")
 #define DICE_SYMBOL symbol(symbol_code("BOCAI"), 4)
 #define LOG name("eosbocailogs"_n)
 //token
@@ -15,22 +15,23 @@ typedef uint32_t eostime;
 
 TABLE st_bet
 {
-    uint64_t id;
+    uint64_t key;
     name player;
     name referrer;
     asset amount;
     uint8_t roll_under;
     uint64_t created_at;
-    uint64_t primary_key() const { return id; }
+    uint64_t primary_key() const { return key; }
 };
 
 
 TABLE st_user
 {
+    uint64_t key;
     name owner;
     asset amount;
     uint32_t count;
-    uint64_t primary_key() const { return (uint64_t) owner; }
+    uint64_t primary_key() const { return  key; }
 };
 
 struct st_result
@@ -53,6 +54,7 @@ struct st_fund_pool
 // @abi table global i64
 struct st_global
 {
+
     uint64_t current_id;
     double eosperdice;
     uint64_t nexthalve;

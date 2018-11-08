@@ -9,87 +9,74 @@
 
 #include <string>
 
-namespace eosiosystem
-{
-class system_contract;
+namespace eosiosystem {
+   class system_contract;
 }
 
-namespace eosio
-{
+namespace eosio {
 
-using std::string;
+   using std::string;
 
-class token : public contract
-{
-    public:
+   class [[eosio::contract("eosio.token")]] token : public contract {
+      public:
+         using contract::contract;
 
-    using contract::contract;
+         [[eosio::action]]
+         void create( name   issuer,
+                      asset  maximum_supply);
 
-      token(name receiver, name code, datastream<const char *> ds)() : contract(receiver, code, ds) {}
+         [[eosio::action]]
+         void issue( name to, asset quantity, string memo );
 
-      void create(name issuer,
-                  asset maximum_supply);
+         [[eosio::action]]
+         void retire( asset quantity, string memo );
 
-      void issue(name to, asset quantity, string memo);
+         [[eosio::action]]
+         void transfer( name    from,
+                        name    to,
+                        asset   quantity,
+                        string  memo );
 
-      void retire(asset quantity, string memo);
+         [[eosio::action]]
+         void open( name owner, const symbol& symbol, name ram_payer );
 
-      void transfer(name from,
-                    name to,
-                    asset quantity,
-                    string memo);
+         [[eosio::action]]
+         void close( name owner, const symbol& symbol );
 
-      void close(name owner, symbol& symbol);
+         static asset get_supply( name token_contract_account, symbol_code sym_code )
+         {
+            stats statstable( token_contract_account, sym_code.raw() );
+            const auto& st = statstable.get( sym_code.raw() );
+            return st.supply;
+         }
 
-      inline asset get_supply(symbol sym) const;
+         static asset get_balance( name token_contract_account, name owner, symbol_code sym_code )
+         {
+            accounts accountstable( token_contract_account, owner.value );
+            const auto& ac = accountstable.get( sym_code.raw() );
+            return ac.balance;
+         }
 
-      inline asset get_balance(name owner, symbol sym) const;
+      private:
+         struct [[eosio::table]] account {
+            asset    balance;
 
-    private:
-      struct account
-      {
-            asset balance;
+            uint64_t primary_key()const { return balance.symbol.code().raw(); }
+         };
 
-            uint64_t primary_key() const { return balance.symbol.name(); }
-      };
+         struct [[eosio::table]] currency_stats {
+            asset    supply;
+            asset    max_supply;
+            name     issuer;
 
-      struct currency_stats
-      {
-            asset supply;
-            asset max_supply;
-            name issuer;
+            uint64_t primary_key()const { return supply.symbol.code().raw(); }
+         };
 
-            uint64_t primary_key() const { return supply.symbol.name(); }
-      };
+         typedef eosio::multi_index< "accounts"_n, account > accounts;
+         typedef eosio::multi_index< "stat"_n, currency_stats > stats;
 
-      typedef eosio::multi_index<"accounts"_n, account> accounts;
-      typedef eosio::multi_index<"stat"_n, currency_stats> stats;
+         void sub_balance( name owner, asset value );
+         void add_balance( name owner, asset value, name ram_payer );
+   };
 
-      void sub_balance(name owner, asset value);
-      void add_balance(name owner, asset value, name ram_payer);
-
-    public:
-      struct transfer_args
-      {
-            name from;
-            name to;
-            asset quantity;
-            string memo;
-      };
-};
-
-asset token::get_supply(symbol sym) const
-{
-      stats statstable(_self, sym.raw());
-      const auto &st = statstable.get(sym.raw());
-      return st.supply;
-}
-
-  asset token::get_balance(name owner, symbol sym) const
-{
-      accounts accountstable(_self, owner.value);
-      const auto &ac = accountstable.get(sym.raw());
-      return ac.balance;
-}
-
-} // namespace eosio
+} /// namespace eosio

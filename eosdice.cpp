@@ -1,11 +1,10 @@
 #include "eosdice.hpp"
 
-
 void eosdice::reveal(const st_bet &bet)
 {
     require_auth(_self);
-    uint8_t random_roll = random(bet.player, bet.id);
-    asset payout(0, EOS_SYMBOL);
+    uint8_t random_roll = random(bet.player, bet.key);
+    asset payout(0, EOS_SYMBOL());
     if (random_roll < bet.roll_under)
     {
         payout = compute_payout(bet.roll_under, bet.amount);
@@ -35,7 +34,7 @@ void eosdice::reveal(const st_bet &bet)
     }
     unlock(bet.amount);
 
-    st_result result{.bet_id = bet.id,
+    st_result result{.bet_id = bet.key,
                      .player = bet.player,
                      .referrer = bet.referrer,
                      .amount = bet.amount,
@@ -103,7 +102,7 @@ void eosdice::transfer(const name &from,
     //vip check
     // vipcheck(from, quantity);
 
-    const st_bet _bet{.id = next_id(),
+    const st_bet _bet{.key = next_id(),
                       .player = from,
                       .referrer = referrer,
                       .amount = quantity,
@@ -140,25 +139,3 @@ void eosdice::init()
     global.initStatu = 1;
     _global.set(global, _self);
 }
-
-extern "C"
-{
-void apply(uint64_t receiver, uint64_t code, uint64_t action)
-{
-    if (code == receiver)
-    {
-        switch (action)
-        {
-            EOSIO_DISPATCH_HELPER(eosdice, (reveal)(init))
-        }
-    }
-
-     if ((code == "eosio.token"_n.value) && (action == "transfer"_n.value))
-    {
-        execute_action(name(receiver), name(code),&eosdice::transfer);
-        return;
-    }
-
-    eosio_exit(0);
-}
-};

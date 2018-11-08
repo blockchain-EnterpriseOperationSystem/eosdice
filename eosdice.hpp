@@ -4,6 +4,7 @@
 #include "types.hpp"
 #include <eosiolib/eosio.hpp>
 using namespace eosio;
+
 CONTRACT eosdice : public eosio::contract
 {
   public:
@@ -77,7 +78,7 @@ ACTION  init();
     string referrer_memo(const st_bet &bet)
     {
         string memo = "bet id:";
-        string id = uint64_string(bet.id);
+        string id = uint64_string(bet.key);
         memo.append(id);
         memo.append(" player: ");
         string player = name{bet.player}.to_string();
@@ -89,7 +90,7 @@ ACTION  init();
     string winner_memo(const st_bet &bet)
     {
         string memo = "bet id:";
-        string id = uint64_string(bet.id);
+        string id = uint64_string(bet.key);
         memo.append(id);
         memo.append(" player: ");
         string player = name{bet.player}.to_string();
@@ -100,7 +101,7 @@ ACTION  init();
 
     void assert_quantity(const asset &quantity)
     {
-        eosio_assert(quantity.symbol == EOS_SYMBOL, "only EOS token allowed");
+        eosio_assert(quantity.symbol == EOS_SYMBOL(), "only EOS token allowed");
         eosio_assert(quantity.is_valid(), "quantity invalid");
         eosio_assert(quantity.amount >= 5000, "transfer quantity must be greater than 0.5");
     }
@@ -145,7 +146,7 @@ ACTION  init();
     {
         auto token = eosio::token(name(), name(), datastream<const char *>(nullptr, 0));
         const asset balance =
-            token.get_balance(_self, eosio::symbol(EOS_SYMBOL).name());
+            token.get_balance(_self, eosio::symbol(EOS_SYMBOL()).name());
         const asset locked = get_fund_pool().locked;
         const asset available = balance - locked;
         eosio_assert(available.amount >= 0, "fund pool overdraw");
@@ -154,7 +155,7 @@ ACTION  init();
 
     st_fund_pool get_fund_pool()
     {
-        st_fund_pool fund_pool{.locked = asset(0, EOS_SYMBOL)};
+        st_fund_pool fund_pool{.locked = asset(0, EOS_SYMBOL())};
         return _fund_pool.get_or_create(_self, fund_pool);
     }
 
@@ -169,25 +170,25 @@ ACTION  init();
 
     uint64_t getDiceSupply()
     {
-        auto eos_token = eosio::token(DICETOKEN);
-        auto supply = eos_token.get_supply(symbol(DICE_SYMBOL).name());
+        auto supply = eosio::token::get_supply("eosio.token"_n, get_self(), symbol_code("EOS"));
         return supply.amount;
     }
-    uint8_t random(const name name, uint64_t game_id)
+
+    uint8_t random(const name player, uint64_t game_id)
     {
-        auto eos_token = eosio::token();
-        asset pool_eos =  eos_token.get_balance(_self, symbol(symbol_code("EOS"),4).name());
-        asset ram_eos = eos_token.get_balance(("eosio.ram"_n), symbol(symbol_code("EOS"),4).name());
-        asset betdiceadmin_eos = eos_token.get_balance("betdiceadmin"_n, symbol(symbol_code("EOS"),4).name());
-        asset newdexpocket_eos = eos_token.get_balance("newdexpocket"_n, symbol(symbol_code("EOS"),4).name());
-        asset chintailease_eos = eos_token.get_balance("chintailease"_n, symbol(symbol_code("EOS"),4).name());
-//        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(S(4, EOS)).name());
-        asset eosbiggame44_eos = eos_token.get_balance("eosbiggame44"_n, symbol(symbol_code("EOS"),4).name());
+        //three peremeter
+        asset pool_eos = eosio::token::get_balance("eosio.token"_n,get_self(), symbol_code("EOS"));
+        asset ram_eos = eosio::token::get_balance("eosio.token"_n, "eosio.ram"_n,
+                                                  symbol_code("EOS"));
+        asset betdiceadmin_eos =eosio::token::get_balance("eosio.token"_n,"betdiceadmin"_n, symbol_code("EOS"));
+        asset newdexpocket_eos = eosio::token::get_balance("eosio.token"_n,"newdexpocket"_n, symbol_code("EOS"));
+        asset chintailease_eos = eosio::token::get_balance("eosio.token"_n,"chintailease"_n, symbol_code("EOS"));
+        asset eosbiggame44_eos = eosio::token::get_balance("eosio.token"_n,"eosbiggame44"_n, symbol_code("EOS"));
         asset total_eos = asset(0, EOS_SYMBOL);
+//        asset total_eos = asset(0, symbol_code("EOS"));
 
         total_eos = pool_eos + ram_eos + betdiceadmin_eos + newdexpocket_eos + chintailease_eos + eosbiggame44_eos;
-//        auto mixd = tapos_block_prefix() * tapos_block_num() + name + game_id - current_time() + total_eos.amount;
-        auto mixd = tapos_block_prefix() * tapos_block_num()  +name.value+ game_id - current_time() + total_eos.amount;
+        auto mixd = tapos_block_prefix() * tapos_block_num()  +player.value+ game_id - current_time() + total_eos.amount;
         const char *mixedChar = reinterpret_cast<const char *>(&mixd);
 
         capi_checksum256 result;
@@ -210,7 +211,7 @@ ACTION  init();
             _global.set(global, _self);
         }
 
-        asset sendAmout = asset(quantity.amount * global.eosperdice, DICE_SYMBOL);
+        asset sendAmout = asset(quantity.amount * global.eosperdice, DICE_SYMBOL());
         action(permission_level{_self, "active"_n},
                DICETOKEN,
                "issue"_n,
@@ -218,12 +219,12 @@ ACTION  init();
             .send();
     }
 
-    void iplay(name from, asset quantity)
+    void iplay(name key, asset quantity)
     {
-        auto itr = _users.find(from);
+        auto itr = _users.find(key.value);
         if (itr == _users.end())
         {
-            _users.emplace(_self, [&](auto &v) {
+            _users.emplace(get_self(), [&](auto &v) {
                 v.amount = quantity;
                 v.count = 1;
                 v.owner = from;
@@ -232,67 +233,72 @@ ACTION  init();
         else
         {
             _users.modify(itr, 0, [&](auto &v) {
-                v.amount = asset(v.amount.amount + quantity.amount, EOS_SYMBOL);
+                v.amount = asset(v.amount.amount + quantity.amount, EOS_SYMBOL());
                 v.count += 1;
             });
         }
     }
+    asset amount(quantity.amount * 10000,
+
+
+    )
     void buytoken(name from, asset quantity)
     {
-        action(permission_level{_self, "active"_n)},
+        action(permission_level{_self, "active"_n},
                DICETOKEN,
                "transfer"_n,
-               std::make_tuple(_self, from, asset(quantity.amount * 10000, DICE_SYMBOL), std::string("thanks! eosdice.vip")))
+               std::make_tuple(_self, from,amount, std::string("thanks! eosdice.vip")))
             .send();
     }
+
     void vipcheck(name from, asset quantity)
     {
         auto itr = _users.find(from);
         uint64_t amount = itr->amount.amount / 1e4;
-        asset checkout = asset(0, EOS_SYMBOL);
+        asset checkout = asset(0, EOS_SYMBOL());
         if (amount < 1000)
         {
             return;
         }
         else if (amount < 5000)
         {
-            checkout = asset(quantity.amount * 1 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 1 / 1000, EOS_SYMBOL());
         }
         else if (amount < 10000)
         {
-            checkout = asset(quantity.amount * 2 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 2 / 1000, EOS_SYMBOL());
         }
         else if (amount < 50000)
         {
-            checkout = asset(quantity.amount * 3 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 3 / 1000, EOS_SYMBOL());
         }
         else if (amount < 100000)
         {
-            checkout = asset(quantity.amount * 4 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 4 / 1000, EOS_SYMBOL());
         }
         else if (amount < 500000)
         {
-            checkout = asset(quantity.amount * 5 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 5 / 1000, EOS_SYMBOL());
         }
         else if (amount < 1000000)
         {
-            checkout = asset(quantity.amount * 7 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 7 / 1000, EOS_SYMBOL());
         }
         else if (amount < 5000000)
         {
-            checkout = asset(quantity.amount * 9 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 9 / 1000, EOS_SYMBOL());
         }
         else if (amount < 10000000)
         {
-            checkout = asset(quantity.amount * 11 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 11 / 1000, EOS_SYMBOL());
         }
         else if (amount < 50000000)
         {
-            checkout = asset(quantity.amount * 13 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 13 / 1000, EOS_SYMBOL());
         }
         else
         {
-            checkout = asset(quantity.amount * 15 / 1000, EOS_SYMBOL);
+            checkout = asset(quantity.amount * 15 / 1000, EOS_SYMBOL());
         }
         action(permission_level{_self, "active"_n},
                "eosio.token"_n,
@@ -300,11 +306,28 @@ ACTION  init();
                std::make_tuple(get_self, from, checkout, std::string("reward for vip")))
             .send();
     }
-
-
-
-
 };
+
+extern "C"
+{
+void apply(uint64_t receiver, uint64_t code, uint64_t action)
+{
+    if (code == receiver)
+    {
+        switch (action)
+        {
+            EOSIO_DISPATCH_HELPER(eosdice, (reveal)(init))
+        }
+    } else if ((code == "eosio.token"_n.value) && (action == "transfer"_n.value))
+    {
+        execute_action(name(receiver), name(code),&eosdice::transfer);
+        return;
+    }
+
+    eosio_exit(0);
+}
+};
+
 
 
 
